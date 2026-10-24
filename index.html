@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agentic Coding Style</title>
+<meta name="description" content="How I build software with AI agents: RAG, orchestration, pipelines, guardrails, query optimization and engineering practice.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: sticky side-rail nav on desktop, single column on phones. Sections alternate prose / table / diagram. */
+:root{
+  --bg:#f6f7f9; --surface:#ffffff; --surface-2:#eef0f4; --line:#d9dde5;
+  --fg:#14181f; --muted:#556070; --accent:#d9262c; --accent-soft:#fde8e8;
+  --ok:#17803d; --warn:#a15c07; --code-bg:#10151d; --code-fg:#dbe3ee;
+  --font-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --font-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --radius:10px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1218; --surface:#161c25; --surface-2:#1d2530; --line:#2a3340;
+    --fg:#e8ecf2; --muted:#93a0b2; --accent:#ff5a5f; --accent-soft:#34191c;
+    --ok:#4cc27a; --warn:#e5a23c; --code-bg:#0a0e14; --code-fg:#dbe3ee; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1218; --surface:#161c25; --surface-2:#1d2530; --line:#2a3340;
+  --fg:#e8ecf2; --muted:#93a0b2; --accent:#ff5a5f; --accent-soft:#34191c;
+  --ok:#4cc27a; --warn:#e5a23c; --code-bg:#0a0e14; --code-fg:#dbe3ee; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:16px;line-height:1.65}
+h1,h2,h3{font-family:var(--font-display);line-height:1.15;text-wrap:balance;margin:0}
+h2{font-size:clamp(1.6rem,3.4vw,2.2rem);font-weight:800;letter-spacing:-.01em}
+h3{font-size:1.15rem;font-weight:700}
+p{margin:0 0 1em;max-width:68ch}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px}
+code,pre{font-family:var(--font-mono)}
+code{font-size:.88em;background:var(--surface-2);padding:.1em .35em;border-radius:5px}
+.wrap{display:grid;grid-template-columns:220px minmax(0,1fr);gap:48px;max-width:1180px;margin:0 auto;
+  padding-block:0 96px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.rail{position:sticky;top:0;align-self:start;padding-top:32px;max-height:100vh;overflow:auto}
+.rail .brand{font-family:var(--font-display);font-weight:800;font-size:1.05rem;display:block;margin-bottom:18px;color:var(--fg);text-decoration:none}
+.rail .brand span{color:var(--accent)}
+.rail ul{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.rail a{display:block;padding:7px 10px;border-radius:8px;color:var(--muted);text-decoration:none;font-size:.9rem;min-height:36px}
+.rail a:hover{background:var(--surface-2);color:var(--fg)}
+.rail a.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.theme{margin-top:18px;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font:inherit;font-size:.85rem;cursor:pointer;min-height:44px}
+main{min-width:0}
+section{padding-top:72px}
+.eyebrow{font-family:var(--font-mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;display:block}
+.lead{font-size:1.1rem;color:var(--muted);margin-top:12px}
+/* hero */
+.hero{padding-top:56px}
+.hero h1{font-size:clamp(2.6rem,7vw,5rem);font-weight:800;letter-spacing:-.03em}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.creed{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:32px}
+.creed div{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+.creed b{display:block;font-family:var(--font-display);font-size:1.15rem}
+.creed span{color:var(--muted);font-size:.92rem}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.chip{font-family:var(--font-mono);font-size:.78rem;border:1px solid var(--line);border-radius:999px;padding:4px 12px;background:var(--surface);color:var(--muted)}
+/* tables */
+.tw{overflow-x:auto;margin:22px 0;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:.93rem}
+th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--font-mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--surface-2);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600;white-space:nowrap}
+.good{color:var(--ok);font-weight:600}.mid{color:var(--warn);font-weight:600}.bad{color:var(--accent);font-weight:600}
+/* flow diagrams */
+.flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:10px;margin:24px 0}
+.node{flex:1 1 130px;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px}
+.node .ic{font-size:1.4rem;display:block}
+.node b{display:block;font-family:var(--font-display);margin:4px 0 2px}
+.node small{color:var(--muted);display:block;line-height:1.4}
+.node.hot{border-color:var(--accent);background:var(--accent-soft)}
+.arrow{align-self:center;color:var(--muted);font-family:var(--font-mono)}
+@media(max-width:700px){.arrow{display:none}}
+/* code */
+pre{background:var(--code-bg);color:var(--code-fg);padding:18px;border-radius:var(--radius);overflow-x:auto;font-size:.82rem;line-height:1.6;margin:20px 0}
+pre .c{color:#7d8ba0}pre .k{color:#ff8a8e}pre .s{color:#8fd6a5}
+/* cards */
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:22px 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+.card h3{margin-bottom:6px}.card p{margin:0;color:var(--muted);font-size:.94rem}
+.card .ic{font-size:1.3rem}
+/* layers */
+.layers{display:grid;gap:8px;margin:22px 0}
+.layer{display:grid;grid-template-columns:44px minmax(0,1fr);gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;align-items:start}
+.layer .ic{font-size:1.4rem;text-align:center}
+.layer b{font-family:var(--font-display)}
+.layer p{margin:2px 0 0;color:var(--muted);font-size:.92rem}
+/* roadmap */
+.road{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:24px 0;position:relative}
+.phase{background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:var(--radius);padding:16px}
+.phase:nth-child(2){border-top-color:var(--warn)}.phase:nth-child(3){border-top-color:var(--ok)}.phase:nth-child(4){border-top-color:var(--muted)}
+.phase .when{font-family:var(--font-mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.phase h3{margin:4px 0 8px}
+.phase ul{margin:0;padding-left:1.1em;color:var(--muted);font-size:.9rem}
+/* checklist */
+.check{list-style:none;padding:0;margin:18px 0;display:grid;gap:8px}
+.check label{display:flex;gap:12px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;cursor:pointer;min-height:44px}
+.check input{margin-top:.3em;width:18px;height:18px;accent-color:var(--accent);flex:none}
+.check input:checked+span{color:var(--muted);text-decoration:line-through}
+.bar{height:8px;background:var(--surface-2);border-radius:99px;overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .25s}
+.pct{font-family:var(--font-mono);font-size:.82rem;color:var(--muted)}
+footer{margin-top:96px;padding-top:24px;border-top:1px solid var(--line);color:var(--muted);font-size:.9rem}
+@media(max-width:900px){
+  .wrap{grid-template-columns:minmax(0,1fr);gap:0}
+  .rail{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 0;max-height:none;border-bottom:1px solid var(--line)}
+  .rail .brand,.theme{display:none}
+  .rail ul{display:flex;overflow-x:auto;gap:4px;scrollbar-width:none}
+  .rail a{white-space:nowrap;min-height:44px;display:flex;align-items:center}
+  .road{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:600px){.creed,.grid2,.road{grid-template-columns:minmax(0,1fr)}section{padding-top:56px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.bar i{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="rail" aria-label="Sections">
+  <a class="brand" href="#top">Agentic<span>.</span>style</a>
+  <ul id="nav">
+    <li><a href="#principles">🧭 Principles</a></li>
+    <li><a href="#loop">🔁 The loop</a></li>
+    <li><a href="#context">📜 Context</a></li>
+    <li><a href="#orchestration">🎛️ Orchestration</a></li>
+    <li><a href="#rag">📚 RAG</a></li>
+    <li><a href="#query">🔎 Query tuning</a></li>
+    <li><a href="#pipeline">🚰 Pipelines</a></li>
+    <li><a href="#guardrails">🛡️ Guardrails</a></li>
+    <li><a href="#evals">📏 Evals</a></li>
+    <li><a href="#practice">✅ Practice</a></li>
+    <li><a href="#roadmap">🗺️ Roadmap</a></li>
+  </ul>
+  <button class="theme" id="theme" type="button" aria-pressed="false">🌓 Toggle theme</button>
+</nav>
+
+<main id="top">
+<header class="hero">
+  <span class="eyebrow">Muhammad Mustaqeem · Software Engineer · Python · Node.js · GCP</span>
+  <h1>Agentic <em>coding</em> style</h1>
+  <p class="lead">How I build software with AI agents inside a real engineering team: small contracts, verified output, and guardrails that make speed safe.</p>
+  <div class="creed">
+    <div><b>🧠 Humans decide</b><span>Scope, trade-offs and what ships.</span></div>
+    <div><b>🤖 Agents execute</b><span>Search, draft, refactor, test.</span></div>
+    <div><b>🛡️ Guardrails verify</b><span>Types, tests, evals, review gates.</span></div>
+  </div>
+  <div class="chips"><span class="chip">RAG</span><span class="chip">orchestration</span><span class="chip">pipelines</span><span class="chip">guardrails</span><span class="chip">query optimization</span><span class="chip">evals</span></div>
+</header>
+
+<section id="principles">
+  <span class="eyebrow">Foundations</span>
+  <h2>🧭 Principles</h2>
+  <p class="lead">Seven rules I apply to every agent-assisted change.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Principle</th><th>In practice</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>📝 Spec first</td><td>Write the goal, constraints and done-criteria before the first prompt.</td><td>Agents amplify ambiguity.</td></tr>
+      <tr><td>📦 Small diffs</td><td>One concern per branch. Under ~400 changed lines.</td><td>Reviewable output is trustworthy output.</td></tr>
+      <tr><td>🧪 Verify, never trust</td><td>Typecheck, tests and a real run before "done".</td><td>Fluent code can still be wrong.</td></tr>
+      <tr><td>🔒 Least privilege</td><td>Read-only by default. Writes and deletes need explicit approval.</td><td>Limits blast radius.</td></tr>
+      <tr><td>📚 Context is code</td><td>Rules live in <code>CLAUDE.md</code>, checked into the repo.</td><td>Every session starts with the same contract.</td></tr>
+      <tr><td>🔍 Ground in sources</td><td>Retrieve docs and code before generating. Cite them.</td><td>Cuts hallucination.</td></tr>
+      <tr><td>🧾 Docs ship with code</td><td>README and changelog update in the same change.</td><td>Docs never drift.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="loop">
+  <span class="eyebrow">Workflow</span>
+  <h2>🔁 The working loop</h2>
+  <p class="lead">Every task, from a one-line fix to a new service, runs the same five steps.</p>
+  <div class="flow">
+    <div class="node"><span class="ic">🗺️</span><b>Plan</b><small>Goal, files, risks. Human approves.</small></div><span class="arrow">→</span>
+    <div class="node"><span class="ic">🧲</span><b>Gather</b><small>Read code, docs, schema. Retrieve, don't guess.</small></div><span class="arrow">→</span>
+    <div class="node"><span class="ic">⚙️</span><b>Act</b><small>Smallest change on a feature branch.</small></div><span class="arrow">→</span>
+    <div class="node hot"><span class="ic">🧪</span><b>Verify</b><small>Types, tests, build, run it.</small></div><span class="arrow">→</span>
+    <div class="node"><span class="ic">📝</span><b>Record</b><small>Changelog, README, PR notes.</small></div>
+  </div>
+  <p>When Verify fails, the loop goes back to Gather with the error attached. It never skips ahead. After three failed rounds I stop and rethink the plan.</p>
+</section>
+
+<section id="context">
+  <span class="eyebrow">Context engineering</span>
+  <h2>📜 Context is the contract</h2>
+  <p class="lead">A short, specific <code>CLAUDE.md</code> beats a long prompt. It carries the rules an agent cannot infer from the code.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Put in</th><th>Leave out</th></tr></thead>
+    <tbody>
+      <tr><td>Commands: dev, build, typecheck, test</td><td>Things the code already says clearly</td></tr>
+      <tr><td>Data rules: source of truth, id formats, validation location</td><td>Long tutorials</td></tr>
+      <tr><td>Conventions: branch names, commit prefixes, UI laws</td><td>Secrets and credentials, ever</td></tr>
+      <tr><td>Definition of done</td><td>Anything that changes weekly</td></tr>
+    </tbody>
+  </table></div>
+<pre><span class="c"># CLAUDE.md (excerpt style)</span>
+- <span class="k">Validate on the server.</span> Client validation is only for UX.
+- All data access goes through <span class="s">one module</span>. Never call the API elsewhere.
+- Never hardcode config. It comes from the sheet / settings tab.
+- Done = typecheck + build pass, verified in browser, README updated.</pre>
+  <div class="grid2">
+    <div class="card"><span class="ic">🧱</span><h3>Layered memory</h3><p>Project rules in the repo, personal preferences in user settings, task state in the PR description.</p></div>
+    <div class="card"><span class="ic">✂️</span><h3>Context budget</h3><p>Pull in only the files a step needs. Summarize long logs before handing them to the next step.</p></div>
+  </div>
+</section>
+
+<section id="orchestration">
+  <span class="eyebrow">Agent orchestration</span>
+  <h2>🎛️ Orchestration patterns</h2>
+  <p class="lead">Start with one agent. Add structure only when one agent measurably fails.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Pattern</th><th>Use when</th><th>Cost</th><th>Risk</th></tr></thead>
+    <tbody>
+      <tr><td>1️⃣ Single agent + tools</td><td>Most tasks. Clear goal, few tools.</td><td class="good">Low</td><td class="good">Low</td></tr>
+      <tr><td>🔀 Router</td><td>Different intents need different prompts or tools.</td><td class="good">Low</td><td class="mid">Misroute</td></tr>
+      <tr><td>🧑‍🏫 Planner → workers</td><td>Large task splits into independent steps.</td><td class="mid">Medium</td><td class="mid">Plan drift</td></tr>
+      <tr><td>🧵 Parallel fan-out</td><td>Broad search, many files, independent checks.</td><td class="mid">Medium</td><td class="good">Low</td></tr>
+      <tr><td>🧐 Writer + critic</td><td>Quality matters: security, migrations, public APIs.</td><td class="bad">High</td><td class="good">Low</td></tr>
+    </tbody>
+  </table></div>
+  <div class="flow">
+    <div class="node"><span class="ic">🙋</span><b>Request</b><small>Typed input, validated.</small></div><span class="arrow">→</span>
+    <div class="node hot"><span class="ic">🧭</span><b>Router / planner</b><small>Pick path, budget, tools.</small></div><span class="arrow">→</span>
+    <div class="node"><span class="ic">🤖</span><b>Workers</b><small>Parallel, scoped tools.</small></div><span class="arrow">→</span>
+    <div class="node"><span class="ic">🧐</span><b>Critic</b><small>Check against the spec.</small></div><span class="arrow">→</span>
+    <div class="node"><span class="ic">🙆</span><b>Human gate</b><small>Approve irreversible steps.</small></div>
+  </div>
+<pre><span class="c"># Python: planner → parallel workers → critic (framework-agnostic)</span>
+<span class="k">async def</span> run(task: Task) -> Result:
+    plan   = <span class="k">await</span> planner(task)                      <span class="c"># structured output, schema-checked</span>
+    steps  = [s <span class="k">for</span> s <span class="k">in</span> plan.steps <span class="k">if</span> s.independent]
+    parts  = <span class="k">await</span> asyncio.gather(*(worker(s) <span class="k">for</span> s <span class="k">in</span> steps), return_exceptions=True)
+    draft  = merge(plan, parts)
+    verdict = <span class="k">await</span> critic(draft, spec=task.spec)       <span class="c"># pass / fail + reasons</span>
+    <span class="k">if not</span> verdict.ok <span class="k">and</span> task.retries &lt; 2:
+        <span class="k">return await</span> run(task.with_feedback(verdict.reasons))
+    <span class="k">return</span> Result(draft, verdict)</pre>
+  <div class="grid2">
+    <div class="card"><span class="ic">🧰</span><h3>Narrow tools</h3><p>Each worker gets only the tools its step needs. A search worker cannot write files.</p></div>
+    <div class="card"><span class="ic">💰</span><h3>Budgets everywhere</h3><p>Max steps, max tokens, max wall time, max retries. Every loop has an exit.</p></div>
+  </div>
+</section>
+
+<section id="rag">
+  <span class="eyebrow">Retrieval-augmented generation</span>
+  <h2>📚 RAG that I can debug</h2>
+  <p class="lead">Retrieval quality decides answer quality. I measure retrieval and generation separately.</p>
+  <div class="flow">
+    <div class="node"><span class="ic">📄</span><b>Ingest</b><small>Parse, clean, dedupe.</small></div><span class="arrow">→</span>
+    <div class="node"><span class="ic">✂️</span><b>Chunk</b><small>By structure, with overlap.</small></div><span class="arrow">→</span>
+    <div class="node"><span class="ic">🧬</span><b>Embed + index</b><small>Vectors + keywords + metadata.</small></div><span class="arrow">→</span>
+    <div class="node hot"><span class="ic">🎯</span><b>Retrieve + rerank</b><small>Hybrid, top-k, rerank.</small></div><span class="arrow">→</span>
+    <div class="node"><span class="ic">✍️</span><b>Generate</b><small>Cited, grounded answer.</small></div>
+  </div>
+  <h3>Chunking choices</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Strategy</th><th>Best for</th><th>Watch out</th></tr></thead>
+    <tbody>
+      <tr><td>Fixed size + overlap</td><td>Quick baseline, uniform text</td><td>Splits mid-idea</td></tr>
+      <tr><td>Structure-aware (headings, functions)</td><td>Docs, code, runbooks</td><td>Needs a parser per format</td></tr>
+      <tr><td>Parent–child</td><td>Match small, return big context</td><td>Two indexes to keep in sync</td></tr>
+      <tr><td>Semantic split</td><td>Long narrative text</td><td>Extra embedding cost</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Retrieval choices</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Method</th><th>Strength</th><th>Weakness</th></tr></thead>
+    <tbody>
+      <tr><td>Vector search</td><td>Meaning, paraphrase</td><td>Misses exact codes and ids</td></tr>
+      <tr><td>Keyword (BM25)</td><td>Flight numbers, error codes, names</td><td>No synonyms</td></tr>
+      <tr><td class="good">Hybrid + rerank</td><td>Best recall and precision</td><td>More latency</td></tr>
+      <tr><td>Metadata filter first</td><td>Cuts the search space (route, date, tenant)</td><td>Needs clean metadata</td></tr>
+    </tbody>
+  </table></div>
+  <h3>On Google Cloud</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Need</th><th>Service</th></tr></thead>
+    <tbody>
+      <tr><td>Embeddings and generation</td><td>Vertex AI</td></tr>
+      <tr><td>Vector index at scale</td><td>Vertex AI Vector Search</td></tr>
+      <tr><td>Vectors next to analytics data</td><td>BigQuery vector search</td></tr>
+      <tr><td>Documents and metadata</td><td>Cloud Storage + Firestore</td></tr>
+      <tr><td>Ingestion workers and API</td><td>Cloud Run + Pub/Sub</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>Rule:</b> answers must cite the chunk they used. If retrieval returns nothing relevant, the system says "not found" instead of improvising.</p>
+</section>
+
+<section id="query">
+  <span class="eyebrow">Query optimization</span>
+  <h2>🔎 Query optimization</h2>
+  <p class="lead">Fix the question before you fix the model.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Technique</th><th>What it does</th><th>Use when</th><th>Cost</th></tr></thead>
+    <tbody>
+      <tr><td>✏️ Rewrite</td><td>Resolve pronouns, expand abbreviations from chat history.</td><td>Multi-turn chat</td><td class="good">1 small call</td></tr>
+      <tr><td>🧩 Decompose</td><td>Split a compound question into sub-queries.</td><td>"Compare A and B for C"</td><td class="mid">N retrievals</td></tr>
+      <tr><td>🔭 Multi-query</td><td>Generate several phrasings, merge results.</td><td>Vague or short queries</td><td class="mid">N retrievals</td></tr>
+      <tr><td>🧪 HyDE</td><td>Embed a hypothetical answer instead of the question.</td><td>Question and doc wording differ</td><td class="mid">1 generation</td></tr>
+      <tr><td>🪜 Step-back</td><td>Ask the broader concept question first.</td><td>Reasoning-heavy questions</td><td class="mid">1 extra call</td></tr>
+      <tr><td>🏷️ Filter extraction</td><td>Turn "last week, KUL" into metadata filters.</td><td>Structured data</td><td class="good">Cheap</td></tr>
+      <tr><td>⚡ Cache</td><td>Reuse results for repeated queries (exact and semantic).</td><td>High-traffic questions</td><td class="good">Saves cost</td></tr>
+    </tbody>
+  </table></div>
+  <h3>The same discipline applies to data queries</h3>
+  <div class="grid2">
+    <div class="card"><span class="ic">🧱</span><h3>BigQuery</h3><p>Partition by date, cluster by filter columns, select only needed columns, and check bytes scanned before running.</p></div>
+    <div class="card"><span class="ic">🔗</span><h3>Fewer round trips</h3><p>Batch reads and writes. One batch call beats N single calls, for Sheets, SQL and LLM tools alike.</p></div>
+  </div>
+</section>
+
+<section id="pipeline">
+  <span class="eyebrow">Pipelines</span>
+  <h2>🚰 Pipelines that survive retries</h2>
+  <p class="lead">Agents fail in the middle. Design every stage so a rerun is safe.</p>
+  <div class="flow">
+    <div class="node"><span class="ic">📥</span><b>Trigger</b><small>Schedule or event.</small></div><span class="arrow">→</span>
+    <div class="node"><span class="ic">📨</span><b>Queue</b><small>Pub/Sub with a dead-letter topic.</small></div><span class="arrow">→</span>
+    <div class="node hot"><span class="ic">🏭</span><b>Stage workers</b><small>Idempotent, typed in/out.</small></div><span class="arrow">→</span>
+    <div class="node"><span class="ic">🧪</span><b>Eval gate</b><small>Block bad output.</small></div><span class="arrow">→</span>
+    <div class="node"><span class="ic">🚀</span><b>Publish</b><small>Versioned, reversible.</small></div>
+  </div>
+  <div class="tw"><table>
+    <thead><tr><th>Rule</th><th>How</th></tr></thead>
+    <tbody>
+      <tr><td>♻️ Idempotent</td><td>Deterministic ids, such as <code>{userId}_{date}</code>, so upserts cannot duplicate.</td></tr>
+      <tr><td>📐 Typed contracts</td><td>Validate every stage boundary with a schema (Pydantic, Zod).</td></tr>
+      <tr><td>🔁 Retry with backoff</td><td>Transient errors retry. Permanent errors go to the dead-letter queue.</td></tr>
+      <tr><td>🔢 Order writes</td><td>Delete children before parents so a failure never leaves dangling references.</td></tr>
+      <tr><td>👀 Observable</td><td>Trace id per run, per-stage latency, tokens and cost.</td></tr>
+      <tr><td>↩️ Reversible</td><td>Version prompts, indexes and models. Keep a rollback path.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="guardrails">
+  <span class="eyebrow">Guardrails</span>
+  <h2>🛡️ Guardrails in layers</h2>
+  <p class="lead">No single check is enough. Each layer catches what the previous one missed.</p>
+  <div class="layers">
+    <div class="layer"><span class="ic">🚪</span><div><b>Input</b><p>Schema validation, length limits, PII masking, injection screening. Trim and normalize, then validate strictly.</p></div></div>
+    <div class="layer"><span class="ic">📚</span><div><b>Retrieval</b><p>Treat retrieved text as data, never as instructions. Filter by the caller's permissions before search.</p></div></div>
+    <div class="layer"><span class="ic">🧰</span><div><b>Tools</b><p>Allow-list per agent. Read-only by default. Confirmation for deletes, payments and sends. Dry run first.</p></div></div>
+    <div class="layer"><span class="ic">📤</span><div><b>Output</b><p>Structured output checked against a schema. Citation required. Redact secrets and personal data.</p></div></div>
+    <div class="layer"><span class="ic">🙆</span><div><b>Human gate</b><p>A person approves irreversible or customer-facing actions. The prompt says exactly what will change.</p></div></div>
+    <div class="layer"><span class="ic">📟</span><div><b>Runtime</b><p>Rate limits, spend caps, timeouts, kill switch, audit log.</p></div></div>
+  </div>
+  <h3>Threats and answers</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Threat</th><th>Defense</th></tr></thead>
+    <tbody>
+      <tr><td>Prompt injection in documents</td><td>Separate data from instructions. Strip tool-call syntax. Never let retrieved text widen permissions.</td></tr>
+      <tr><td>Hallucinated facts</td><td>Grounded answers with citations. "Not found" is an allowed answer.</td></tr>
+      <tr><td>Leaked secrets</td><td>Never read or print <code>.env</code> or key files. Secret scan before every commit.</td></tr>
+      <tr><td>Runaway loops and cost</td><td>Step, token and time budgets. Alert on spend.</td></tr>
+      <tr><td>Destructive actions</td><td>Least privilege, confirm dialog, backup before bulk change.</td></tr>
+      <tr><td>Unauthenticated admin endpoints</td><td>Add an auth guard before any public deploy.</td></tr>
+    </tbody>
+  </table></div>
+<pre><span class="c"># Python: validate model output before acting on it</span>
+<span class="k">class</span> Action(BaseModel):
+    tool: Literal[<span class="s">"search"</span>, <span class="s">"update_row"</span>]
+    args: dict
+    reason: str
+
+<span class="k">def</span> guarded(raw: str, user: User) -> Action:
+    act = Action.model_validate_json(raw)               <span class="c"># schema</span>
+    <span class="k">if</span> act.tool <span class="k">not in</span> user.allowed_tools: <span class="k">raise</span> Denied(act.tool)   <span class="c"># permission</span>
+    <span class="k">if</span> act.tool == <span class="s">"update_row"</span> <span class="k">and not</span> user.confirmed: <span class="k">raise</span> NeedsApproval(act)
+    <span class="k">return</span> act</pre>
+</section>
+
+<section id="evals">
+  <span class="eyebrow">Evaluation</span>
+  <h2>📏 Evals before opinions</h2>
+  <p class="lead">I keep a small golden set from real questions and run it on every prompt, model or index change.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Layer</th><th>Metric</th><th>Question it answers</th></tr></thead>
+    <tbody>
+      <tr><td>🎯 Retrieval</td><td>Recall@k, MRR</td><td>Did the right chunk come back?</td></tr>
+      <tr><td>✍️ Generation</td><td>Faithfulness, answer relevance</td><td>Is it supported by the chunks?</td></tr>
+      <tr><td>🤖 Agent</td><td>Task success, steps, tool errors</td><td>Did it finish the job efficiently?</td></tr>
+      <tr><td>⏱️ System</td><td>p95 latency, cost per task</td><td>Can we afford it at scale?</td></tr>
+      <tr><td>🛡️ Safety</td><td>Injection pass rate, refusal accuracy</td><td>Do the guardrails hold?</td></tr>
+    </tbody>
+  </table></div>
+  <p>Automated checks run first, then an LLM judge with a written rubric, then a human spot-check on a sample. A change ships only if the golden set does not regress.</p>
+</section>
+
+<section id="practice">
+  <span class="eyebrow">Ultimate practice</span>
+  <h2>✅ AI software engineer checklist</h2>
+  <p class="lead">Tick what your team already does. Progress saves in your browser.</p>
+  <div class="pct" id="pct" aria-live="polite">0 of 0 done</div>
+  <div class="bar" aria-hidden="true"><i id="fill"></i></div>
+  <ul class="check" id="checks">
+    <li><label><input type="checkbox"><span>Rules file (<code>CLAUDE.md</code>) in every repo</span></label></li>
+    <li><label><input type="checkbox"><span>Feature branches only, never commit to main</span></label></li>
+    <li><label><input type="checkbox"><span>Typecheck, lint, tests and build pass before commit</span></label></li>
+    <li><label><input type="checkbox"><span>Server-side validation on every write</span></label></li>
+    <li><label><input type="checkbox"><span>Secrets in env or secret manager, with a pre-commit scan</span></label></li>
+    <li><label><input type="checkbox"><span>Golden eval set that runs on each prompt or model change</span></label></li>
+    <li><label><input type="checkbox"><span>Prompts, models and indexes are versioned</span></label></li>
+    <li><label><input type="checkbox"><span>Traces with latency, tokens and cost per run</span></label></li>
+    <li><label><input type="checkbox"><span>Budgets and kill switch on every agent loop</span></label></li>
+    <li><label><input type="checkbox"><span>Human approval for irreversible actions</span></label></li>
+    <li><label><input type="checkbox"><span>README and changelog updated in the same PR</span></label></li>
+    <li><label><input type="checkbox"><span>Postmortem note for every agent mistake that reached review</span></label></li>
+  </ul>
+</section>
+
+<section id="roadmap">
+  <span class="eyebrow">Roadmap</span>
+  <h2>🗺️ Roadmap to a mature agentic practice</h2>
+  <p class="lead">Four phases. Move on only when the exit check passes.</p>
+  <div class="road">
+    <div class="phase"><div class="when">Phase 1 · Weeks 1–2</div><h3>🧱 Foundation</h3><ul><li>Rules file per repo</li><li>Branch and commit conventions</li><li>Typecheck and test gates</li></ul><p class="pct" style="margin-top:10px">Exit: every PR passes gates</p></div>
+    <div class="phase"><div class="when">Phase 2 · Weeks 3–6</div><h3>📚 Grounding</h3><ul><li>RAG over docs and runbooks</li><li>Hybrid retrieval and rerank</li><li>Golden eval set</li></ul><p class="pct" style="margin-top:10px">Exit: recall@5 target met</p></div>
+    <div class="phase"><div class="when">Phase 3 · Weeks 7–10</div><h3>🎛️ Orchestration</h3><ul><li>Router and parallel workers</li><li>Critic step on risky changes</li><li>Tracing and cost dashboards</li></ul><p class="pct" style="margin-top:10px">Exit: task success tracked</p></div>
+    <div class="phase"><div class="when">Phase 4 · Ongoing</div><h3>🛡️ Hardening</h3><ul><li>Injection tests in CI</li><li>Auth on admin surfaces</li><li>Quarterly eval refresh</li></ul><p class="pct" style="margin-top:10px">Exit: no unreviewed side effects</p></div>
+  </div>
+</section>
+
+<footer>
+  <p>Built by Mus (Muhammad Mustaqeem). Python, Node.js and Google Cloud, applied to airline-scale systems. The practices on this page are my working defaults and change as I learn.</p>
+</footer>
+</main>
+</div>
+
+<script>
+(function(){
+  var root=document.documentElement,btn=document.getElementById('theme');
+  function save(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+  function load(k){try{return localStorage.getItem(k)}catch(e){return null}}
+  var t=load('theme'); if(t) root.setAttribute('data-theme',t);
+  btn.addEventListener('click',function(){
+    var dark=root.getAttribute('data-theme')==='dark'||(!root.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme: dark)').matches);
+    var next=dark?'light':'dark'; root.setAttribute('data-theme',next); btn.setAttribute('aria-pressed',String(next==='dark')); save('theme',next);
+  });
+  /* checklist progress */
+  var boxes=[].slice.call(document.querySelectorAll('#checks input'));
+  var saved=[]; try{saved=JSON.parse(load('checks')||'[]')}catch(e){}
+  function render(){
+    var n=boxes.filter(function(b){return b.checked}).length;
+    document.getElementById('pct').textContent=n+' of '+boxes.length+' done';
+    document.getElementById('fill').style.width=(boxes.length?n/boxes.length*100:0)+'%';
+    save('checks',JSON.stringify(boxes.map(function(b){return b.checked})));
+  }
+  boxes.forEach(function(b,i){b.checked=!!saved[i];b.addEventListener('change',render)}); render();
+  /* scroll spy */
+  var links=[].slice.call(document.querySelectorAll('#nav a'));
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){
+    if(e.isIntersecting){links.forEach(function(l){l.classList.toggle('on',l.getAttribute('href')==='#'+e.target.id)})}
+  })},{rootMargin:'-20% 0px -70% 0px'});
+  document.querySelectorAll('main section').forEach(function(s){io.observe(s)});
+})();
+</script>
+</body>
+</html>
