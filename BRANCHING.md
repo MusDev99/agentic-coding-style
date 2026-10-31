@@ -12,7 +12,7 @@ One strategy for every hobby repo. Short-lived branches off `main`, merged only 
 | 4 | Commit messages and PR titles follow **Conventional Commits** | `branch-policy.yml` (PR title) |
 | 5 | Merge only by PR, **squash merge**, CI green, conversations resolved | Branch ruleset |
 | 6 | One concern per branch, under ~400 changed lines | Review |
-| 7 | Branch is deleted on merge; stale branches cleaned monthly | Repo setting + cleanup script |
+| 7 | Branch is deleted on merge; stale branches cleaned monthly | `branch-cleanup.yml` + repo setting + monthly review |
 
 ## 🏷️ Branch names
 
@@ -73,7 +73,7 @@ main ──●──────────────────────
 3. Commit in small steps, run the repo's gate (`npm run verify` or equivalent).
 4. `git push -u origin feat/expense-export`, open a PR with a Conventional title.
 5. CI green + review (self-review is fine on solo repos) → **Squash and merge**.
-6. Branch auto-deletes. Locally: `git switch main && git pull && git branch -d feat/expense-export`.
+6. Branch auto-deletes (`branch-cleanup.yml`, backed by the repo setting). Locally: `git switch main && git pull && git branch -d feat/expense-export`.
 
 Hotfix = a normal `fix/` branch. No `develop` or `release/` branches: releases are SemVer tags (`vX.Y.Z`) on `main`.
 
@@ -143,7 +143,7 @@ GitHub retargets open PRs and redirects old `master` links. Update any CI `on: p
 
 | Branch state | Action |
 |---|---|
-| Merged into `main` | Delete (auto on merge going forward) |
+| Merged into `main` | Deleted automatically on merge by `branch-cleanup.yml`; older ones by hand |
 | Unmerged, no commit in 30 days, no open PR | Open a PR or delete |
 | `ccr-*` / old `claude/*` with no open PR | Delete after checking the diff is on `main` or not needed |
 
@@ -163,11 +163,14 @@ git for-each-ref --sort=committerdate refs/remotes/origin \
 
 Delete one after review: `git push origin --delete <branch>`. Run monthly; never bulk-delete without reading the list.
 
+**Why both the workflow and the setting?** The *Automatically delete head branches* setting is per repo and easy to miss on a new repo; the workflow travels with the code. When both are on, the setting usually wins the race and the workflow logs "already gone". Neither touches unmerged branches, so the monthly review above still applies.
+
 ## 🤖 Enforcement in this repo
 
 | File | What it does |
 |---|---|
 | `.github/workflows/branch-policy.yml` | Fails a PR whose branch name or title breaks the rules above. No third-party actions; copy it as-is to each repo. |
+| `.github/workflows/branch-cleanup.yml` | Deletes a PR's head branch when the PR is **merged**. Skips closed-unmerged PRs, fork branches, the default branch and long-lived names (`main`, `master`, `develop`, `release/*`, `gh-pages`), and keeps a branch that another open PR is based on (deleting it would close that PR). Plain `pull_request` trigger, `contents: write` only on that job. Copy it as-is to each repo. |
 | `.github/pull_request_template.md` | Checklist: Conventional title, one concern, gates green, docs updated. |
 
 ## 🗺️ Rollout roadmap (other five repos)
@@ -191,4 +194,4 @@ Week 2–3 ─ Phase 4    task-dashboard, Budget-tracker (master → main + depl
 Week 4  ── Review     every repo: ruleset active, auto-delete on, stale branches = 0
 ```
 
-**Exit check per repo:** default branch `main` · ruleset `protect-main` active · `branch-policy` required · squash only · auto-delete on · no stale branches · CLAUDE.md links to this doc.
+**Exit check per repo:** default branch `main` · ruleset `protect-main` active · `branch-policy` required · squash only · auto-delete on + `branch-cleanup.yml` · no stale branches · CLAUDE.md links to this doc.
